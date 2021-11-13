@@ -1,0 +1,212 @@
+<html>
+    <head>
+        <title>Photos</title>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
+        <script src="https://unpkg.com/vue"></script>
+        <script src="https://unpkg.com/axios@0.2.1/dist/axios.min.js"></script>
+        <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    </head>
+    <body>
+		<div id="contents">
+			<div v-if="!searchResult && !uploadURL" id="search">
+				<h1>Search Photo</h1>
+				<div class="form-group" style="width:50%; margin-left:auto; margin-right:auto; display:flex">
+					<input id="keyword" type="text" class="form-control form-input" placeholder="Keyword" x-webkit-speech/>
+					
+                    <img @click="voicefunction" src="https://i.imgur.com/cHidSVu.gif"  style="width:40px; height:40px; cursor: pointer;"/>
+                </div>
+				
+				<button @click="searchImage" class="btn btn-primary">Search</button>
+			</div>
+
+			<div v-if="searchResult" id="search_result">
+				<h1>Search Result</h1>
+				<div v-if="searchResult!=[]">
+					<div v-for="item in searchResult" style="margin-top: 30px">
+						<a target="_blank" :href="'https://s3.amazonaws.com/photos.wanjias.us/photos/'+item"><img :src="'https://s3.amazonaws.com/photos.wanjias.us/photos/'+item" />
+						<p>{{ item }}</p></a>
+					</div>
+				</div>
+				
+				<button @click="refresh" class="btn btn-primary" style="margin-top: 20px">New Search</button>
+			</div>
+			
+			<div v-if="!uploadURL" style="height:50px"></div>
+			
+			<div v-if="!searchResult" id="app">
+				<h1>Upload Photo</h1>
+				<div v-if="!image">
+					<h2>Select an image</h2>
+					<input type="file" @change="onFileChange" />
+				</div>
+				<div v-else>
+					<img :src="image" />
+					
+					<div class="form-group" style="width:25%; margin-left:auto; margin-right:auto; margin-top:25px">
+						<input id="tag1" type="text" class="form-control form-input" placeholder="Tag 1">
+					</div>
+					<div class="form-group" style="width:25%; margin-left:auto; margin-right:auto">
+						<input id="tag2" type="text" class="form-control form-input" placeholder="Tag 2">
+					</div>
+					
+					<div style="height: 10px"></div>
+					<button v-if="!uploadURL" @click="uploadImage" class="btn btn-primary">Upload image</button>
+					<button v-if="!uploadURL" @click="removeImage" class="btn btn-primary">Remove image</button>
+				</div>
+				<h2 v-if="uploadURL" style="margin-top:10px">Success! Image uploaded to bucket.</h2>
+			</div>
+		</div>
+        
+		<script>
+            const MAX_IMAGE_SIZE = 1000000;
+
+            const API_ENDPOINT = "https://x3jzotu0fe.execute-api.us-east-1.amazonaws.com/v1/photos/";
+            var endpoint = API_ENDPOINT + "1.jpg";
+
+            new Vue({
+                el: "#contents",
+                data: {
+                    image: "",
+                    uploadURL: "",
+                    searchResult: "",
+                },
+                methods: {
+                    refresh(e) {
+                        window.location.reload()
+                    },
+                    onFileChange(e) {
+                        let files = e.target.files || e.dataTransfer.files;
+                        if (!files.length) return;
+                        this.createImage(files[0]);
+                    },
+                    createImage(file) {
+                        // var image = new Image()
+                        let reader = new FileReader();
+                        reader.onload = (e) => {
+                            endpoint = API_ENDPOINT + file.name;
+                            console.log("length: ", e.target.result.includes("data:image/jpeg"));
+                            if (!e.target.result.includes("data:image/jpeg")) {
+                                return alert("Wrong file type - JPG only.");
+                            }
+                            if (e.target.result.length > MAX_IMAGE_SIZE) {
+                                return alert("Image is loo large.");
+                            }
+                            this.image = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    },
+                    searchImage: async function (e) {
+                        console.log('Search clicked');
+						const search_url = 'https://x3jzotu0fe.execute-api.us-east-1.amazonaws.com/v1/search?q=' + document.getElementById('keyword').value;
+						fetch(search_url, {
+                            method: "GET",
+                            headers: {
+                                "x-api-key": 'X0uBTHocoL6w1D2rdkyQsIgQRpWQqwG9Y3CfwOf4',
+                            }
+                        }).then((response) => {
+							return response.json();
+					    }).then((array) => {
+							console.log(array);
+							this.searchResult = array;
+					    });
+                    },
+                    removeImage: function (e) {
+                        console.log("Remove clicked");
+                        this.image = "";
+                    },
+                    uploadImage: async function (e) {
+                        console.log("Upload clicked");
+						
+						var tag1 = document.getElementById('tag1').value
+						var tag2 = document.getElementById('tag2').value
+                        const response = {
+                            uploadURL: endpoint,
+                        };
+                        console.log("Response: ", response);
+                        console.log("Uploading: ", this.image);
+                        let binary = atob(this.image.split(",")[1]);
+                        let array = [];
+                        for (var i = 0; i < binary.length; i++) {
+                            array.push(binary.charCodeAt(i));
+                        }
+                        let blobData = new Blob([new Uint8Array(array)], { type: "image/jpeg" });
+                        console.log("Uploading to: ", response.uploadURL);
+                        const result = await fetch(response.uploadURL, {
+                            method: "PUT",
+                            headers: {
+                                "x-api-key": 'X0uBTHocoL6w1D2rdkyQsIgQRpWQqwG9Y3CfwOf4',
+								"x-amz-meta-customLabels": tag1+","+tag2
+                            },
+                            body: blobData,
+                        });
+                        console.log("Result: ", result);
+                        // Final URL for the user doesn't need the query string params
+                        this.uploadURL = response.uploadURL.split("?")[0];
+                    },   
+                    voicefunction:function (e) {
+
+               
+                        var SpeechRecognition=window.SpeechRecognition || window.webkitSpeechRecognition;
+                        var recognition = new SpeechRecognition();
+
+                        recognition.continuous = false;
+                        recognition.interimResults = false;
+                        recognition.lang="en-US"
+                        recognition.start();
+
+                        recognition.onresult = function(e) {
+                            document.getElementById('keyword').value = e.results[0][0].transcript;
+                            recognition.stop();
+                        };
+
+                        recognition.onerror = function(e) {
+                            recognition.stop();
+                        }
+                    },
+                },
+
+            });
+
+        </script>
+        <style type="text/css">
+            body {
+                background: #20262e;
+                padding: 20px;
+                font-family: sans-serif;
+            }
+            #app, #search, #search_result {
+                background: #fff;
+                border-radius: 4px;
+                padding: 20px;
+                transition: all 0.2s;
+                text-align: center;
+            }
+            #logo {
+                width: 100px;
+            }
+            h2 {
+                font-weight: bold;
+                margin-bottom: 15px;
+            }
+            h1,
+            h2 {
+                font-weight: normal;
+                margin-bottom: 15px;
+            }
+            a {
+                color: #42b983;
+            }
+            img {
+                width: 30%;
+                margin: auto;
+                display: block;
+                margin-bottom: 10px;
+            }
+            .speech {border: 1px solid #DDD; width: 300px; padding: 0; margin: 0}
+            .speech input {border: 0; width: 240px; display: inline-block; height: 30px;}
+            .speech img {float: right; width: 40px }
+        </style>
+    </body>
+</html>
