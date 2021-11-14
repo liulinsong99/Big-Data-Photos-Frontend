@@ -99,7 +99,12 @@
                     },
                     searchImage: async function (e) {
                         console.log('Search clicked');
-						const search_url = 'https://x3jzotu0fe.execute-api.us-east-1.amazonaws.com/v1/search?q=' + document.getElementById('keyword').value;
+						var keyword = document.getElementById('keyword').value;
+						if(!keyword || keyword.replace(/\s/g, '') == ''){
+							alert("Please Enter Keyword!");
+							return;
+						}						
+						const search_url = 'https://x3jzotu0fe.execute-api.us-east-1.amazonaws.com/v1/search?q=' + keyword;
 						fetch(search_url, {
                             method: "GET",
                             headers: {
