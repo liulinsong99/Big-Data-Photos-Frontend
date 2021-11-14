@@ -87,7 +87,7 @@
                         // var image = new Image()
                         let reader = new FileReader();
                         reader.onload = (e) => {
-                            endpoint = API_ENDPOINT + file.name;
+                            endpoint = API_ENDPOINT + file.name.replace(/\s/g, '_');
                             console.log("length: ", e.target.result.includes("data:image/jpeg"));
                             if (!e.target.result.includes("data:image/jpeg")) {
                                 return alert("Wrong file type - JPG only.");
